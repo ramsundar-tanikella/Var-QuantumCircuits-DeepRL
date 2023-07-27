@@ -92,7 +92,7 @@ def plotTrainingResultCombined(_iter_index, _iter_reward, _iter_total_steps, _fi
 	# plt.yscale('log')
 	ax.plot(_iter_index, _iter_reward, '-b', label='Reward')
 	ax.plot(_iter_index, _iter_total_steps, '-r', label='Total Steps')
-	leg = ax.legend();
+	leg = ax.legend()
 
 	ax.set(xlabel='Iteration Index', 
 		   title=_fileTitle)
@@ -103,7 +103,7 @@ def plotTrainingResultReward(_iter_index, _iter_reward, _iter_total_steps, _file
 	# plt.yscale('log')
 	ax.plot(_iter_index, _iter_reward, '-b', label='Reward')
 	# ax.plot(_iter_index, _iter_total_steps, '-r', label='Total Steps')
-	leg = ax.legend();
+	leg = ax.legend()
 
 	ax.set(xlabel='Iteration Index', 
 		   title=_fileTitle)
@@ -194,38 +194,57 @@ def variational_classifier(var_Q_circuit, var_Q_bias , angles=None):
 	# bias_6 = var_Q_bias[5]
 
 	# raw_output = circuit(weights, angles=angles) + np.array([bias_1,bias_2,bias_3,bias_4,bias_5,bias_6])
-	raw_output = circuit(weights, angles=angles) + var_Q_bias
+	# print("var_Q_bias inside variational_classifier: ",var_Q_bias)
+	# print("circuits: ",circuit(weights, angles=angles))
+	circuits = circuit(weights, angles=angles)
+	# Add var_Q_bias to each tensor in the circuits list element-wise
+	raw_output = [c + var_Q_bias for c in circuits]
+ 
+	# Convert the list of tensors to a single tensor
+	raw_output_tensor = torch.stack(raw_output)
+
+	# raw_output_tensor will now be a tensor of shape (4, 4)
+	# To obtain the desired tensor of shape (4,), you can take the maximum along the first dimension (dim=0)
+	desired_output = torch.max(raw_output_tensor, dim=0).values
+	# raw_output = circuit(weights, angles=angles) + var_Q_bias
 	# We are approximating Q Value
 	# Maybe softmax is no need
 	# softMaxOutPut = np.exp(raw_output) / np.exp(raw_output).sum()
-
+	raw_output = desired_output
+	# print("raw_output: ",raw_output)
 	return raw_output
 
-
 def square_loss(labels, predictions):
-	""" Square loss function
+    loss = 0
+    for l, p in zip(labels, predictions):
+        loss = loss + (l - p) ** 2
+    loss = loss / len(labels)
+    
+    return loss
+# def square_loss(labels, predictions):
+# 	""" Square loss function
 
-	Args:
-		labels (array[float]): 1-d array of labels
-		predictions (array[float]): 1-d array of predictions
-	Returns:
-		float: square loss
-	"""
-	loss = 0
-	for l, p in zip(labels, predictions):
-	    loss = loss + (l - p) ** 2
-	loss = loss / len(labels)
-	# print("LOSS")
+# 	Args:
+# 		labels (array[float]): 1-d array of labels
+# 		predictions (array[float]): 1-d array of predictions
+# 	Returns:
+# 		float: square loss
+# 	"""
+# 	loss = 0
+# 	for l, p in zip(labels, predictions):
+# 	    loss = loss + (l - p) ** 2
+#     loss1 = loss / len(labels)
+# 	# print("LOSS")
 
-	# print(loss)
+# 	# print(loss)
 
-	# output = torch.abs(predictions - labels)**2
-	# output = torch.sum(output) / len(labels)
+# 	# output = torch.abs(predictions - labels)**2
+# 	# output = torch.sum(output) / len(labels)
 
-	# loss = nn.MSELoss()
-	# output = loss(labels.double(), predictions.double())
+# 	# loss = nn.MSELoss()
+# 	# output = loss(labels.double(), predictions.double())
 
-	return loss
+# 	return loss
 
 # def square_loss(labels, predictions):
 # 	""" Square loss function
@@ -446,7 +465,7 @@ def deep_Q_Learning(alpha, gamma, epsilon, episodes, max_steps, n_tests, render 
 	for episode in range(episodes):
 		print(f"Episode: {episode}")
 		# Output a s in decimal format
-		s = env.reset()
+		s, _ = env.reset()
 		# Doing epsilog greedy action selection
 		# With var_Q
 		a = epsilon_greedy(var_Q_circuit = var_Q_circuit, var_Q_bias = var_Q_bias, epsilon = epsilon, n_actions = n_actions, s = s).item()
@@ -465,7 +484,7 @@ def deep_Q_Learning(alpha, gamma, epsilon, episodes, max_steps, n_tests, render 
 			target_update_counter += 1
 
 			# Execute the action 
-			s_, reward, done, info = env.step(a)
+			s_, reward, done, info, _ = env.step(a)
 			# print("Reward : " + str(reward))
 			# print("Done : " + str(done))
 			total_reward += reward
